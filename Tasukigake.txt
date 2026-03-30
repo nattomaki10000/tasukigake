@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factoring Master Pro - Standard Edition</title>
+    <style>
+        :root {
+            --primary: #4A90E2;
+            --bg: #F8FAFC;
+            --text: #1E293B;
+            --border: #CBD5E1;
+            --math-font: 'Times New Roman', serif;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            overscroll-behavior-y: none;
+        }
+        .game-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* --- Header --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        #level-display {
+            display: flex;
+            gap: 6px;
+            align-items: baseline;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: #F1F5F9;
+        }
+        .lvl-item { font-size: 0.9rem; color: #94A3B8; font-weight: bold; }
+        .lvl-item.current { color: var(--primary); font-size: 1.1rem; }
+        
+        #timer-display {
+            font-family: monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #64748B;
+        }
+
+        /* --- Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 360px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .modal-title { font-size: 1.1rem; margin-bottom: 15px; font-weight: bold; text-align: center; font-family: var(--math-font); font-style: italic; }
+        
+        .lvl-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        .lvl-option input { margin-right: 10px; width: 18px; height: 18px; }
+        
+        .settings-divider { border-top: 1px solid var(--border); margin: 16px 0 12px 0; }
+        .adv-title { font-size: 1rem; font-weight: bold; margin-bottom: 12px; color: var(--primary); }
+        .setting-row { margin-bottom: 12px; }
+        .setting-row label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 4px; font-weight: bold; color: #475569; }
+        .setting-row input[type="range"] { width: 100%; margin: 4px 0; }
+        .val-badge { background: #E2E8F0; padding: 2px 6px; border-radius: 4px; color: var(--text); font-family: monospace; }
+        
+        .max-example-box { background: #1E293B; color: #F8FAFC; padding: 10px; border-radius: 6px; font-size: 1rem; font-family: var(--math-font); font-style: italic; text-align: center; margin-top: 12px; }
+        .reset-btn { background: #F1F5F9; border: none; padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; margin-top: 8px; width: 100%; color: #64748B; }
+
+        .modal-close-btn {
+            margin-top: 16px; width: 100%; padding: 12px;
+            background: var(--primary); color: white; border: none;
+            border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;
+        }
+
+        /* --- Problem Display --- */
+        .problem-display {
+            background: #1E293B; color: #F8FAFC; font-size: 1.5rem;
+            padding: 16px; border-radius: 12px; text-align: center;
+            margin-bottom: 12px; font-family: var(--math-font); font-style: italic;
+        }
+        .status-msg { text-align: center; height: 30px; margin-bottom: 8px; font-weight: bold; font-size: 1.3rem; }
+
+        /* --- Cross Method Layout --- */
+        .tasuki-container {
+            position: relative; display: grid;
+            grid-template-columns: 80px 30px 50px 25px 80px;
+            grid-template-rows: 48px 50px 48px 16px 36px;
+            align-items: center; justify-content: center; margin-bottom: 16px;
+        }
+        .tasuki-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        
+        .formula-container { display: none; flex-direction: column; align-items: center; justify-content: center; height: 198px; font-family: var(--math-font); font-size: 1.4rem; margin-bottom: 16px; }
+        .formula-row { display: flex; align-items: center; gap: 5px; }
+
+        .input-box {
+            width: 48px; height: 46px; border: 2px solid var(--border); border-radius: 8px;
+            background: white; display: flex; justify-content: center; align-items: center;
+            font-size: 1.2rem; font-weight: bold; cursor: pointer; z-index: 10; position: relative;
+        }
+        .input-box.active { border-color: var(--primary); background: #F0F7FF; box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2); }
+        .input-box.giveup-text { color: #EF4444; }
+
+        .math-label { font-family: var(--math-font); font-style: italic; font-size: 1.2rem; z-index: 10; }
+        .calc-res { font-family: var(--math-font); font-style: italic; font-weight: bold; text-align: center; font-size: 1.1rem; }
+        .hr-line { grid-column: 1 / 6; border-top: 2px solid var(--text); margin: 4px 0; }
+
+        /* --- Numpad --- */
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+        .btn { border: none; background: #F1F5F9; padding: 14px 5px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; color: var(--text); }
+        .btn:active { background: #E2E8F0; }
+        .btn-giveup { background: #FEE2E2; color: #B91C1C; font-size: 1rem; }
+        .btn-next { background: #F59E0B; color: white; font-size: 1rem; }
+        .btn-primary { background: var(--primary); color: white; }
+
+        .mode-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; }
+        .mode-btn { padding: 6px 12px; border: 1px solid var(--border); background: white; border-radius: 20px; cursor: pointer; font-size: 0.8rem; }
+        .mode-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .hint-toggle { text-align: center; font-size: 0.8rem; color: #64748B; margin-bottom: 12px; }
+
+        .fs-btn-in {
+            position: absolute; right: 12px; bottom: 12px;
+            background: none; border: 1px solid var(--border);
+            padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; color: #94A3B8;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-card" id="game-card">
+    <div class="header">
+        <div id="level-display" onclick="toggleModal(true)"></div>
+        <div id="timer-display">0.00s</div>
+    </div>
+
+    <div id="level-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" id="modal-content">
+            <div class="modal-title">ax² + bx + c = (px + q)(rx + s)</div>
+            
+            <label class="lvl-option">
+                <input type="checkbox" value="1" class="lvl-cb">Lv.1 (a or c = 1)
+            </label>
+            <label class="lvl-option">
+                <input type="checkbox" value="2" class="lvl-cb" checked>Lv.2 (a and c = prime)
+            </label>
+            <label class="lvl-option">
+                <input type="checkbox" value="3" class="lvl-cb" checked>Lv.3 (a or c = prime)
+            </label>
+            <label class="lvl-option">
+                <input type="checkbox" value="4" class="lvl-cb">Lv.4 (a and c ≠ prime)
+            </label>
+
+            <div class="settings-divider"></div>
+            <div class="adv-title">Advanced Settings</div>
+            
+            <div class="setting-row">
+                <label><span class="label-text">x Coeff Max (p,r)</span><span class="val-badge" id="lbl-maxp">7</span></label>
+                <input type="range" id="sl-maxp" min="7" max="20" value="7">
+            </div>
+            
+            <div class="setting-row">
+                <label><span class="label-text">Const Max (|q|,|s|)</span><span class="val-badge" id="lbl-maxq">9</span></label>
+                <input type="range" id="sl-maxq" min="9" max="20" value="9">
+            </div>
+
+            <div class="setting-row">
+                <label style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="cb-safety" checked style="margin:0;">
+                    <span id="txt-safety">Safety Guard</span>
+                </label>
+            </div>
+
+            <div class="setting-row" id="row-safety-a">
+                <label><span class="label-text">Max a</span><span class="val-badge" id="lbl-safety-a">40</span></label>
+                <input type="range" id="sl-safety-a" min="40" max="200" value="40">
+            </div>
+
+            <div class="setting-row" id="row-safety-c">
+                <label><span class="label-text">Max |c|</span><span class="val-badge" id="lbl-safety-c">60</span></label>
+                <input type="range" id="sl-safety-c" min="40" max="200" value="60">
+            </div>
+
+            <div style="font-size: 0.8rem; color:#64748B; margin-top:5px; text-align:center;">Max Difficulty Example:</div>
+            <div class="max-example-box" id="max-example-disp">...</div>
+            <button class="reset-btn" onclick="resetAdvancedSettings()">Reset Settings</button>
+
+            <button class="modal-close-btn" onclick="applyLevels()">Apply & Play</button>
+        </div>
+    </div>
+
+    <div class="problem-display" id="display-eq">...</div>
+    <div class="status-msg" id="msg"></div>
+
+    <div class="mode-selector">
+        <button id="mode-tasuki" class="mode-btn active" onclick="setMode('tasuki')">Cross Method</button>
+        <button id="mode-formula" class="mode-btn" onclick="setMode('formula')">Formula Mode</button>
+    </div>
+
+    <div class="hint-toggle">
+        <input type="checkbox" id="show-hint" checked onchange="refreshCalc()"> 
+        <label for="show-hint" style="cursor:pointer">Show calculation</label>
+    </div>
+
+    <div class="tasuki-container" id="layout-tasuki">
+        <svg class="tasuki-svg" id="tasuki-svg"></svg>
+        <div style="display:flex; align-items:center; gap:4px; z-index:10; justify-content: center;">
+            <div class="input-box active" id="p" onclick="setFocus('p')"></div>
+            <span class="math-label">x</span>
+        </div>
+        <div></div>
+        <div class="input-box" id="q" style="margin: 0 auto;" onclick="setFocus('q')"></div>
+        <div class="math-label">→</div>
+        <div class="calc-res" id="hint-rq"></div>
+        <div style="grid-column: span 5; height: 50px;"></div>
+        <div style="display:flex; align-items:center; gap:4px; z-index:10; justify-content: center;">
+            <div class="input-box" id="r" onclick="setFocus('r')"></div>
+            <span class="math-label">x</span>
+        </div>
+        <div></div>
+        <div class="input-box" id="s" style="margin: 0 auto;" onclick="setFocus('s')"></div>
+        <div class="math-label">→</div>
+        <div class="calc-res" id="hint-ps"></div>
+        <div class="hr-line"></div>
+        <div class="calc-res" id="hint-a"></div>
+        <div></div>
+        <div class="calc-res" id="hint-c"></div>
+        <div class="math-label">→</div>
+        <div class="calc-res" id="hint-b" style="color:var(--primary)"></div>
+    </div>
+
+    <div class="formula-container" id="layout-formula">
+        <div class="formula-row">
+            ( <div class="input-box" id="p2" onclick="setFocus('p2')"></div> <span class="math-label">x</span>
+            + <div class="input-box" id="q2" onclick="setFocus('q2')"></div> )
+        </div>
+        <div style="height: 16px;"></div>
+        <div class="formula-row">
+            ( <div class="input-box" id="r2" onclick="setFocus('r2')"></div> <span class="math-label">x</span>
+            + <div class="input-box" id="s2" onclick="setFocus('s2')"></div> )
+        </div>
+    </div>
+
+    <div class="numpad">
+        <button class="btn" onclick="typeIn('1')">1</button>
+        <button class="btn" onclick="typeIn('2')">2</button>
+        <button class="btn" onclick="typeIn('3')">3</button>
+        <button class="btn" onclick="typeIn('4')">4</button>
+        <button class="btn" onclick="typeIn('5')">5</button>
+        <button class="btn" onclick="typeIn('6')">6</button>
+        <button class="btn" onclick="typeIn('7')">7</button>
+        <button class="btn" onclick="typeIn('8')">8</button>
+        <button class="btn" onclick="typeIn('9')">9</button>
+        <button class="btn" style="background:#CBD5E1" onclick="typeIn('-')">+/-</button>
+        <button class="btn" onclick="typeIn('0')">0</button>
+        <button class="btn" style="background:#CBD5E1" onclick="backspace()">BS</button>
+        <button class="btn btn-giveup" id="btn-giveup" onclick="handleGiveUp()">Give Up</button>
+        <button class="btn" style="background:#CBD5E1" onclick="clearAll()">C</button>
+        <button class="btn btn-primary" id="btn-submit" onclick="handleSubmit()">Submit</button>
+    </div>
+
+    <button class="fs-btn-in" onclick="toggleFullScreen()">Full Screen</button>
+</div>
+
+<script>
+    let activeId = 'p';
+    let currentMode = 'tasuki';
+    let selectedLevels = [2, 3];
+    let currentPlayLevel = 2;
+    let currentGoal = { p:0, q:0, r:0, s:0, a:0, b:0, c:0 };
+    let gameState = 'playing'; 
+    let startTime, timerInterval;
+
+    let cfgP = 7, cfgQ = 9, cfgSafeOn = true, cfgSafeA = 40, cfgSafeC = 60;
+
+    let isMouseDownOutside = false;
+    const modalOverlay = document.getElementById('level-modal');
+
+    modalOverlay.addEventListener('mousedown', (e) => { isMouseDownOutside = (e.target === modalOverlay); });
+    modalOverlay.addEventListener('mouseup', (e) => {
+        if (isMouseDownOutside && e.target === modalOverlay) toggleModal(false);
+        isMouseDownOutside = false;
+    });
+
+    function toggleModal(show) {
+        modalOverlay.style.display = show ? 'flex' : 'none';
+        if(show) {
+            document.querySelectorAll('.lvl-cb').forEach(cb => {
+                cb.checked = selectedLevels.includes(parseInt(cb.value));
+            });
+            updateMaxExample();
+        }
+    }
+
+    function resetAdvancedSettings() {
+        document.getElementById('sl-maxp').value = 7;
+        document.getElementById('sl-maxq').value = 9;
+        document.getElementById('cb-safety').checked = true;
+        document.getElementById('sl-safety-a').value = 40;
+        document.getElementById('sl-safety-c').value = 60;
+        ['maxp', 'maxq', 'safety-a', 'safety-c'].forEach(id => { 
+            document.getElementById('sl-'+id).dispatchEvent(new Event('input')); 
+        });
+        document.getElementById('cb-safety').dispatchEvent(new Event('change'));
+    }
+
+    ['maxp', 'maxq', 'safety-a', 'safety-c'].forEach(id => {
+        document.getElementById('sl-' + id).addEventListener('input', (e) => {
+            document.getElementById('lbl-' + id).innerText = e.target.value;
+            updateMaxExample();
+        });
+    });
+
+    document.getElementById('cb-safety').addEventListener('change', (e) => {
+        const isOn = e.target.checked;
+        ['a', 'c'].forEach(suffix => {
+            const row = document.getElementById('row-safety-' + suffix);
+            row.style.opacity = isOn ? "1" : "0.4";
+            row.querySelectorAll('input').forEach(i => i.disabled = !isOn);
+        });
+        updateMaxExample();
+    });
+
+    function updateMaxExample() {
+        const pM = parseInt(document.getElementById('sl-maxp').value);
+        const qM = parseInt(document.getElementById('sl-maxq').value);
+        const safeOn = document.getElementById('cb-safety').checked;
+        const sAM = parseInt(document.getElementById('sl-safety-a').value);
+        const sCM = parseInt(document.getElementById('sl-safety-c').value);
+
+        let bestStr = ""; let maxB = -1;
+        for(let p=pM; p>=1; p--) {
+            for(let r=pM; r>=1; r--) {
+                let a = p*r; if(safeOn && a > sAM) continue;
+                for(let q=qM; q>=1; q--) {
+                    for(let s=qM; s>=1; s--) {
+                        let c = q*s; if(safeOn && Math.abs(c) > sCM) continue;
+                        let b = p*s + r*q;
+                        if(Math.abs(b) > maxB) { maxB = Math.abs(b); bestStr = `${a}x² ${b>=0?'+':'-'} ${Math.abs(b)}x ${c>=0?'+':'-'} ${Math.abs(c)}`; }
+                    }
+                }
+            }
+            if(bestStr) break; 
+        }
+        document.getElementById('max-example-disp').innerText = bestStr || "Searching...";
+    }
+
+    function applyLevels() {
+        const checked = Array.from(document.querySelectorAll('.lvl-cb:checked')).map(cb => parseInt(cb.value));
+        if (checked.length === 0) return;
+        selectedLevels = checked;
+        cfgP = parseInt(document.getElementById('sl-maxp').value);
+        cfgQ = parseInt(document.getElementById('sl-maxq').value);
+        cfgSafeOn = document.getElementById('cb-safety').checked;
+        cfgSafeA = parseInt(document.getElementById('sl-safety-a').value);
+        cfgSafeC = parseInt(document.getElementById('sl-safety-c').value);
+        toggleModal(false);
+        newGame();
+    }
+
+    function isPrime(num) {
+        let n = Math.abs(num); if (n <= 1) return false;
+        for (let i = 2; i <= Math.sqrt(n); i++) if (n % i === 0) return false;
+        return true;
+    }
+    const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const gcd = (x, y) => y === 0 ? x : gcd(y, x % y);
+
+    function newGame() {
+        gameState = 'playing';
+        document.getElementById('btn-submit').innerText = "Submit";
+        document.getElementById('btn-giveup').innerText = "Give Up";
+        document.getElementById('msg').innerText = "";
+        ['p','q','r','s','p2','q2','r2','s2'].forEach(id => document.getElementById(id).classList.remove('giveup-text'));
+
+        currentPlayLevel = selectedLevels[Math.floor(Math.random() * selectedLevels.length)];
+        renderLevelDisplay();
+
+        let p, q, r, s, a, b, c;
+        while (true) {
+            p = rand(1, cfgP); r = rand(1, cfgP); q = rand(-cfgQ, cfgQ); s = rand(-cfgQ, cfgQ);
+            if (q === 0 || s === 0 || p*s + r*q === 0) continue;
+            if (gcd(p, Math.abs(q)) !== 1 || gcd(r, Math.abs(s)) !== 1) continue;
+            a = p * r; c = q * s; b = p * s + r * q;
+            if(cfgSafeOn && (a > cfgSafeA || Math.abs(c) > cfgSafeC)) continue;
+
+            let absC = Math.abs(c);
+            let aP = isPrime(a), cP = isPrime(absC);
+            let valid = false;
+            if (currentPlayLevel === 1) valid = (a === 1 || absC === 1);
+            else if (currentPlayLevel === 2) valid = (aP && cP);
+            else if (currentPlayLevel === 3) valid = (aP || cP);
+            else if (currentPlayLevel === 4) valid = (!aP && a>1 && !cP && absC>1);
+            if (valid) break;
+        }
+        currentGoal = { p, q, r, s, a, b, c };
+        
+        const format = (n, x, isFirst) => {
+            let sgn = n > 0 ? (isFirst ? "" : "+ ") : (isFirst ? "-" : "- ");
+            let val = Math.abs(n) === 1 && x !== "" ? "" : Math.abs(n);
+            return sgn + val + x + " ";
+        };
+        document.getElementById('display-eq').innerText = (format(a, "x²", true) + format(b, "x", false) + format(c, "", false)).trim();
+        
+        clearAll();
+        setFocus(currentMode === 'tasuki' ? 'p' : 'p2');
+        startTimer();
+        setTimeout(drawTasukiLines, 50); 
+    }
+
+    function renderLevelDisplay() {
+        const container = document.getElementById('level-display');
+        container.innerHTML = '';
+        selectedLevels.sort().forEach(lv => {
+            const span = document.createElement('span');
+            span.className = 'lvl-item' + (lv === currentPlayLevel ? ' current' : '');
+            span.innerText = `Lv.${lv}`;
+            container.appendChild(span);
+        });
+    }
+
+    const navMap = {
+        tasuki: { p:{right:'q',down:'r'}, q:{left:'p',down:'s'}, r:{up:'p',right:'s'}, s:{up:'q',left:'r'} },
+        formula: { p2:{right:'q2',down:'r2'}, q2:{left:'p2',down:'s2'}, r2:{up:'p2',right:'s2'}, s2:{up:'q2',left:'r2'} }
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Enter","Backspace"].includes(e.key)) e.preventDefault();
+        if (e.key >= '0' && e.key <= '9') typeIn(e.key);
+        else if (e.key === '-') typeIn('-');
+        else if (e.key === 'Backspace') backspace();
+        else if (e.key === 'Enter') (gameState === 'playing' ? handleSubmit() : newGame());
+        else if (e.key.startsWith('Arrow')) {
+            const dir = e.key.replace('Arrow', '').toLowerCase();
+            const nextId = navMap[currentMode][activeId][dir];
+            if (nextId) setFocus(nextId);
+        }
+    });
+
+    function setFocus(id) {
+        document.querySelectorAll('.input-box').forEach(b => b.classList.remove('active'));
+        activeId = id;
+        document.getElementById(id).classList.add('active');
+    }
+
+    function typeIn(v) {
+        if(gameState !== 'playing') return;
+        const el = document.getElementById(activeId);
+        if (v === '-') {
+            if(['p','r','p2','r2'].includes(activeId)) return;
+            el.innerText = el.innerText.startsWith('-') ? el.innerText.slice(1) : '-' + el.innerText;
+        } else {
+            if (el.innerText.replace('-','').length < 3) el.innerText += v;
+        }
+        syncInputs(); refreshCalc();
+    }
+
+    function syncInputs() {
+        const base = activeId.replace('2','');
+        const target = activeId.includes('2') ? base : base + '2';
+        document.getElementById(target).innerText = document.getElementById(activeId).innerText;
+    }
+
+    function backspace() {
+        if(gameState !== 'playing') return;
+        const el = document.getElementById(activeId);
+        el.innerText = el.innerText.slice(0, -1);
+        syncInputs(); refreshCalc();
+    }
+
+    function clearAll() {
+        ['p','q','r','s','p2','q2','r2','s2'].forEach(id => document.getElementById(id).innerText = "");
+        refreshCalc();
+    }
+
+    function refreshCalc() {
+        const show = document.getElementById('show-hint').checked;
+        const p = parseInt(document.getElementById('p').innerText) || 0;
+        const q = parseInt(document.getElementById('q').innerText) || 0;
+        const r = parseInt(document.getElementById('r').innerText) || 0;
+        const s = parseInt(document.getElementById('s').innerText) || 0;
+        const set = (id, val, suf="") => document.getElementById(id).innerText = show ? (val+suf) : "?"+suf;
+        set('hint-rq', r*q, "x"); set('hint-ps', p*s, "x");
+        set('hint-b', (r*q)+(p*s), "x"); set('hint-a', p*r, "x²"); set('hint-c', q*s);
+    }
+
+    function handleGiveUp() {
+        if (gameState !== 'playing') return newGame();
+        stopTimer(); gameState = 'giveup';
+        const setAns = (id, val) => { const el=document.getElementById(id); el.innerText=val; el.classList.add('giveup-text'); };
+        setAns('p',currentGoal.p); setAns('p2',currentGoal.p); setAns('q',currentGoal.q); setAns('q2',currentGoal.q);
+        setAns('r',currentGoal.r); setAns('r2',currentGoal.r); setAns('s',currentGoal.s); setAns('s2',currentGoal.s);
+        refreshCalc();
+        document.getElementById('msg').innerText = "Answer"; document.getElementById('msg').style.color = "#EF4444";
+        document.getElementById('btn-giveup').innerText = "Next";
+    }
+
+    function handleSubmit() {
+        if (gameState !== 'playing') return newGame();
+        const p = parseInt(document.getElementById('p').innerText), q = parseInt(document.getElementById('q').innerText);
+        const r = parseInt(document.getElementById('r').innerText), s = parseInt(document.getElementById('s').innerText);
+        
+        // --- FIXED: Explicitly set red color for "Fill all boxes" ---
+        if ([p,q,r,s].some(isNaN)) { 
+            const msgEl = document.getElementById('msg');
+            msgEl.innerText = "Fill all boxes"; 
+            msgEl.style.color = "#EF4444"; // Always Red
+            return; 
+        }
+
+        const ok = (p*r===currentGoal.a && q*s===currentGoal.c && p*s+r*q===currentGoal.b) || (r*p===currentGoal.a && s*q===currentGoal.c && r*q+p*s===currentGoal.b);
+        if (ok) {
+            stopTimer(); gameState = 'correct';
+            document.getElementById('msg').innerText = "Correct!"; document.getElementById('msg').style.color = "#10B981";
+            document.getElementById('btn-submit').innerText = "Next";
+        } else {
+            document.getElementById('msg').innerText = "Incorrect!"; document.getElementById('msg').style.color = "#EF4444";
+            document.getElementById('game-card').style.animation = 'shake 0.4s';
+            setTimeout(() => document.getElementById('game-card').style.animation = '', 400);
+        }
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('layout-tasuki').style.display = mode === 'tasuki' ? 'grid' : 'none';
+        document.getElementById('layout-formula').style.display = mode === 'formula' ? 'flex' : 'none';
+        document.getElementById('mode-tasuki').classList.toggle('active', mode === 'tasuki');
+        document.getElementById('mode-formula').classList.toggle('active', mode === 'formula');
+        setFocus(mode === 'tasuki' ? activeId.replace('2','') : activeId.replace('2','')+'2');
+        if(mode === 'tasuki') setTimeout(drawTasukiLines, 10);
+    }
+
+    function drawTasukiLines() {
+        const svg = document.getElementById('tasuki-svg');
+        const getC = (id) => { const el = document.getElementById(id); return { x: el.offsetLeft + el.offsetWidth/2, y: el.offsetTop + el.offsetHeight/2 }; };
+        const pC = getC('p'), qC = getC('q'), rC = getC('r'), sC = getC('s');
+        svg.innerHTML = `<line x1="${pC.x}" y1="${pC.y}" x2="${sC.x}" y2="${sC.y}" stroke="#94A3B8" stroke-width="1.5" /><line x1="${rC.x}" y1="${rC.y}" x2="${qC.x}" y2="${qC.y}" stroke="#94A3B8" stroke-width="1.5" />`;
+    }
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else if (document.exitFullscreen) document.exitFullscreen();
+        setTimeout(drawTasukiLines, 100);
+    }
+
+    function startTimer() { startTime = Date.now(); clearInterval(timerInterval); timerInterval = setInterval(() => { document.getElementById('timer-display').innerText = ((Date.now() - startTime) / 1000).toFixed(2) + 's'; }, 10); }
+    function stopTimer() { clearInterval(timerInterval); }
+
+    window.onload = newGame;
+    window.addEventListener('resize', drawTasukiLines);
+</script>
+</body>
+</html>
